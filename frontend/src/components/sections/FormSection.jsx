@@ -28,7 +28,7 @@ class FormSection extends Component {
                                     value={projectId}
                                     onChange={(e) => onChange('projectId', e.target.value)}
                                     placeholder="Enter Project ID"
-                                    
+                                    autoComplete='projectId'
                                 />
                             </div>
                         </div>
@@ -41,7 +41,7 @@ class FormSection extends Component {
                                     value={datasetId}
                                     onChange={(e) => onChange('datasetId', e.target.value)}
                                     placeholder="Enter Dataset ID"
-                                    
+                                    autoComplete='datasetId'
                                 />
                             </div>
                         </div>
@@ -115,6 +115,16 @@ class FormSection extends Component {
                     </div>
 
                     <div className="mb-3">
+                        <label>Original Text</label>
+                        <textarea
+                            className="form-control"
+                            value={originalText}
+                            onChange={(e) => onChange('originalText', e.target.value)}
+                            rows={4}
+                        />
+                    </div>
+
+                    <div className="mb-3">
                         <label>Select Model</label>
                         <input
                             type="text"
@@ -123,6 +133,7 @@ class FormSection extends Component {
                             onChange={(e) => onChange('modelName', e.target.value)}
                             placeholder="llama2, mistral, phi"
                             list="models"
+                            autoComplete="modelName"
                         />
                         <datalist id="models">
                             {models.map(m => <option key={m} value={m} />)}
