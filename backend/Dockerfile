@@ -29,4 +29,4 @@ ENV START_OLLAMA=true
 ENV OLLAMA_HOST=127.0.0.1
 ENV OLLAMA_PORT=11434
 
-CMD ["python", "app.py"]
+CMD ["sh", "-c", "if [ \"$START_OLLAMA\" = \"true\" ]; then ollama serve & fi; python app.py"]

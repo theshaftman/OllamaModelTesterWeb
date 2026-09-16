@@ -11,7 +11,6 @@ from pydantic import BaseModel
 import PyPDF2
 import OllamaModelTester as omt
 
-
 HOST = '0.0.0.0'
 PORT = 3001
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,8 +27,8 @@ def remove_folder(path) -> None:
         for file in files:
             os.remove(os.path.join(root, file))
         for dir in dirs:
-            os.rmdir(os.path.join(root, dir))
-
+            if (os.path.exists(os.path.join(root, dir))):
+                os.rmdir(os.path.join(root, dir))
     if (os.path.exists(path)):
         os.rmdir(path)
     print(f'Folder "{path}" and its content is removed.')
@@ -50,6 +49,9 @@ ollama_service = None
 
 def start_ollama():
     global ollama_service
+
+    print(f"Connecting to Ollama: {OLLAMA_HOST}:{OLLAMA_PORT}")
+
     ollama_service = omt.OllamaModelTester(
         host=OLLAMA_HOST,
         port=OLLAMA_PORT,
@@ -57,10 +59,12 @@ def start_ollama():
         show_figure=False,
         is_libraries_exec_requested = False,    # install pip packages internal without requirements.txt
         install_requirements_txt = False,      # install pip packages from requirements.txt
-        cmd_timeout = 120,
+        cmd_timeout = 300,
         os_path = os.path.dirname(os.path.abspath(__file__))
     )
+
     ollama_service.__enter__()
+    print("OllamaModelTester started.")
     return ollama_service
 
 def get_ollama():
@@ -76,7 +80,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=['*'],
     allow_headers=['*']
 )
@@ -111,7 +115,6 @@ class FileService:
         except Exception as e:
             print(f"Error extracting PDF: {e}")
             return "Error extracting text from PDF"
-
 
 # Mount static directories
 app.mount('/documents', StaticFiles(directory=DOCUMENTS_DIR), name='documents')
@@ -253,4 +256,5 @@ if __name__ == '__main__':
         print(f'Exception thrown: {str(e)}')
         raise
     finally:
-        ollama_context.__exit__(None, None, None)
+        if ollama_context:
+            ollama_context.__exit__(None, None, None)
