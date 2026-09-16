@@ -12,21 +12,74 @@ import PyPDF2
 import OllamaModelTester as omt
 
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*']
-)
-
 HOST = '0.0.0.0'
 PORT = 3001
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCUMENTS_DIR = os.path.join(BACKEND_DIR, 'documents')
 CHARTS_DIR = os.path.join(BACKEND_DIR, 'charts')
 CREDENTIALS_DIR = os.path.join(BACKEND_DIR, 'credentials')
+
+OLLAMA_HOST = os.getenv('OLLAMA_HOST', '127.0.0.1')
+OLLAMA_PORT = int(os.getenv('OLLAMA_PORT', '11434'))
+
+
+def remove_folder(path) -> None:
+    for root, dirs, files in os.walk(path, topdown=False):
+        for file in files:
+            os.remove(os.path.join(root, file))
+        for dir in dirs:
+            os.rmdir(os.path.join(root, dir))
+
+    if (os.path.exists(path)):
+        os.rmdir(path)
+    print(f'Folder "{path}" and its content is removed.')
+
+def create_folder(path) -> None:
+    os.makedirs(path, exist_ok=True)
+    print(f'Folder "{path}" is created')
+
+
+# remove_folder(CHARTS_DIR)
+# remove_folder(CREDENTIALS_DIR)
+
+create_folder(DOCUMENTS_DIR)
+create_folder(CHARTS_DIR)
+create_folder(CREDENTIALS_DIR)
+
+ollama_service = None
+
+def start_ollama():
+    global ollama_service
+    ollama_service = omt.OllamaModelTester(
+        host=OLLAMA_HOST,
+        port=OLLAMA_PORT,
+        install_packages=True,
+        show_figure=False,
+        is_libraries_exec_requested = False,    # install pip packages internal without requirements.txt
+        install_requirements_txt = False,      # install pip packages from requirements.txt
+        cmd_timeout = 120,
+        os_path = os.path.dirname(os.path.abspath(__file__))
+    )
+    ollama_service.__enter__()
+    return ollama_service
+
+def get_ollama():
+    if (ollama_service is None):
+        raise HTTPException(
+            status_code=503,
+            detail='Ollama service is not working'
+        )
+
+    return ollama_service
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*']
+)
 
 class ComparisonRequest(BaseModel):
     original_text: str
@@ -59,34 +112,12 @@ class FileService:
             print(f"Error extracting PDF: {e}")
             return "Error extracting text from PDF"
 
-def remove_folder(path) -> None:
-    for root, dirs, files in os.walk(path, topdown=False):
-        for file in files:
-            os.remove(os.path.join(root, file))
-        for dir in dirs:
-            os.rmdir(os.path.join(root, dir))
-
-    os.rmdir(path)
-    print(f'Folder "{path}" and its content is removed.')
-
-def create_folder(path) -> None:
-    os.makedirs(path, exist_ok=True)
-    print(f'Folder "{path}" is created')
-
-
-remove_folder(CHARTS_DIR)
-remove_folder(CREDENTIALS_DIR)
-
-create_folder(DOCUMENTS_DIR)
-create_folder(CHARTS_DIR)
-create_folder(CREDENTIALS_DIR)
 
 # Mount static directories
 app.mount('/documents', StaticFiles(directory=DOCUMENTS_DIR), name='documents')
 app.mount('/charts', StaticFiles(directory=CHARTS_DIR), name='charts')
 
 # Set our services
-ollama_service = None
 file_service = FileService()
 
 # Set routes
@@ -97,16 +128,28 @@ async def home():
         'url': f'{HOST}:{PORT}'
     }
 
+@app.get('/health')
+def health():
+    service = get_ollama()
+    return {
+        'status': 'ok',
+        'ollama_ready': service is not None,
+        'ollama_host': OLLAMA_HOST,
+        'ollama_port': OLLAMA_PORT
+    }
+
 @app.get('/api/columns')
 async def get_columns():
-    columns_data = ollama_service.extract_columns()
+    service = get_ollama()
+    columns_data = service.extract_columns()
     return {
         'ollama_columns': columns_data
     }
 
 @app.get('/api/models')
 async def get_models():
-    models = ollama_service.models if ollama_service.models else []
+    service = get_ollama()
+    models = service.models if service.models else []
     return {
         'models': models
     }
@@ -123,6 +166,8 @@ async def post_compare(request: ComparisonRequest):
         data_options = request.data_options
         project_id = request.project_id
         dataset_id = request.dataset_id
+
+        service = get_ollama()
 
         model_fields = []
         validation_fields = []
@@ -141,12 +186,12 @@ async def post_compare(request: ComparisonRequest):
         }]
 
         if (data_options.get('importCsv', True)):
-            ollama_service.import_results_from_csv()
+            service.import_results_from_csv()
         if (data_options.get('importGbq', True)):
-            ollama_service.import_results_from_gbq(project_id=project_id, dataset_id=dataset_id)
+            service.import_results_from_gbq(project_id=project_id, dataset_id=dataset_id)
 
         if (original_text and human_text and human_label):
-            ollama_service.validate_evaluator(
+            service.validate_evaluator(
                 prompt_text=original_text,
                 generated_text=human_text,
                 human_label=human_label
@@ -156,20 +201,20 @@ async def post_compare(request: ComparisonRequest):
         compared_models = []
         if (original_text and len(model.strip()) > 0):
             var_models = f'{model}'.replace(' ', '').split(',')
-            ollama_service.pull_models(var_models)
-            compared_models = ollama_service.compare_models(prompt_text=original_text)
+            service.pull_models(var_models)
+            compared_models = service.compare_models(prompt_text=original_text)
 
         # Create visualizations
-        ollama_service.visualize_results(plot_type='bar', metrics=metrics, savefig_path=f'charts/bar_chart.png', max_cols_per_row=2)
-        ollama_service.visualize_results(plot_type='plot', metrics=metrics, savefig_path=f'charts/plot_chart.png', max_cols_per_row=2)
-        ollama_service.visualize_results(plot_type='scatter', metrics=metrics, savefig_path=f'charts/scatter_chart.png', max_cols_per_row=2)
-        ollama_service.visualize_results(plot_type='pie', metrics=metrics, savefig_path=f'charts/pie_chart.png', max_cols_per_row=2)
+        service.visualize_results(plot_type='bar', metrics=metrics, savefig_path=f'charts/bar_chart.png', max_cols_per_row=2)
+        service.visualize_results(plot_type='plot', metrics=metrics, savefig_path=f'charts/plot_chart.png', max_cols_per_row=2)
+        service.visualize_results(plot_type='scatter', metrics=metrics, savefig_path=f'charts/scatter_chart.png', max_cols_per_row=2)
+        service.visualize_results(plot_type='pie', metrics=metrics, savefig_path=f'charts/pie_chart.png', max_cols_per_row=2)
 
         # Export data
         if (data_options.get('exportCsv', True)):
-            ollama_service.export_results_to_csv()
+            service.export_results_to_csv()
         if (data_options.get('exportGbq', True)):
-            ollama_service.export_results_to_gqb(project_id=project_id, dataset_id=dataset_id)
+            service.export_results_to_gqb(project_id=project_id, dataset_id=dataset_id)
 
         return ComparisonResponse(
             compared_models = compared_models,
@@ -200,15 +245,12 @@ async def download_files(file_type: str = None, filename: str = None):
     return FileResponse(file_path, filename=filename, media_type=media_type)
 
 if __name__ == '__main__':
-    with omt.OllamaModelTester(
-        host='127.0.0.1',
-        port=11434,
-        install_packages=True,
-        show_figure=False,
-        is_libraries_exec_requested = True,    # install pip packages internal without requirements.txt
-        install_requirements_txt = False,      # install pip packages from requirements.txt
-        cmd_timeout = 120,
-        os_path = os.path.dirname(os.path.abspath(__file__))
-    ) as om_tester:
-        ollama_service = om_tester
+    ollama_context = None
+    try:
+        ollama_context = start_ollama()
         uvicorn.run(app=app, host=HOST, port=PORT, log_level='info')
+    except Exception as e:
+        print(f'Exception thrown: {str(e)}')
+        raise
+    finally:
+        ollama_context.__exit__(None, None, None)
