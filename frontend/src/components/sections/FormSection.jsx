@@ -46,7 +46,7 @@ class FormSection extends Component {
                             </div>
                         </div>
                     </div>
-                    <div class="row">
+                    <div className="row">
                         <h4 className="mb-3">Data Import/Export Options</h4>
                         
                         <div className="row">

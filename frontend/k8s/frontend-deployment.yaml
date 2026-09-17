@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-tester-frontend
+  labels:
+    app: ollama-tester-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama-tester-frontend
+  template:
+    metadata:
+      labels:
+        app: ollama-tester-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ollama-tester-frontend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        env:
+        - name: VITE_API_URL
+          value: "http://ollama-tester-backend-service:3001"
+        - name: REACT_APP_API_URL
+          value: "http://ollama-tester-backend-service:3001"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-tester-frontend-service
+spec:
+  selector:
+    app: ollama-tester-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+  type: NodePort

@@ -5,6 +5,7 @@ import Footer from './components/layout/Footer';
 import FormSection from './components/sections/FormSection';
 import ResultsSection from './components/sections/ResultsSection';
 import CredentialsSection from './components/sections/CredentialsSection';
+import api from './app';
 
 class App extends Component {
     state = {
@@ -36,7 +37,7 @@ class App extends Component {
 
     getColumns = async () => {
         try {
-            const res = await axios.get('/api/columns');
+            const res = await api.get('/api/columns');
             this.setState({ columns: res.data.ollama_columns });
         } catch (err) {
             console.log(err);
@@ -45,7 +46,7 @@ class App extends Component {
 
     getModels = async () => {
         try {
-            const res = await axios.get('/api/models');
+            const res = await api.get('/api/models');
             this.setState({ models: res.data.models || [] });
         } catch (err) {
             console.log(err);
@@ -59,7 +60,7 @@ class App extends Component {
         try {
             const { originalText, modelName, humanText, humanLabel, fields,
                 dataOptions, projectId, datasetId  } = this.state;
-            const res = await axios.post('/api/compare', {
+            const res = await api.post('/api/compare', {
                 original_text: originalText,
                 model_name: modelName,
                 human_text: humanText,
@@ -93,7 +94,7 @@ class App extends Component {
         data.append('file', file);
 
         try {
-            const res = await axios.post('/api/upload-pdf', data);
+            const res = await api.post('/api/upload-pdf', data);
             this.setState({ originalText: res.data.text });
         } catch (err) {
             this.setState({ error: 'Upload failed' });
@@ -136,7 +137,7 @@ class App extends Component {
             const formData = new FormData();
             formData.append('file', credentialsFile);
 
-            const res = await axios.post('/api/upload-credentials', formData, {
+            const res = await api.post('/api/upload-credentials', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
