@@ -1,0 +1,71 @@
+name: Deploy to Ubuntu VM Instance and Kubernetes
+
+on:
+    push:
+        branches: ["main"]
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Execute remote SSH commands to deploy
+              uses: appleboy/ssh-action@v1.2.5
+              with:
+                command_timeout: 60m
+                host: ${{ secrets.VM_HOST }}
+                username: ${{ secrets.VM_USER }}
+                key: ${{ secrets.VM_SSH_KEY }}
+                script_stop: true
+                script: |
+                    # 1. Check if Minikube is running
+                    if ! minikube status | grep -q "host: Running"; then
+                        if ! minikube start --cpus=2 --memory=4096 --driver=docker --container-runtime=docker; then
+                            echo "Minikube start failed"
+                            exit 1
+                        fi
+
+                        if ! minikube kubectl --wait --for=condition=Ready nodes --all --timeout=120s; then
+                            echo "Minikube start failed"
+                            exit 1
+                        fi
+                    fi
+
+                    echo "Minikube OK"
+                    minikube status
+
+                    # 2. Navigate to the application folder
+                    cd /home/ubuntu/.projects/OllamaModelTesterWeb/
+
+                    # 3. Pull latest changes from main branch
+                    git pull origin main
+
+                    # 4. Delete backaned and frontend clusters
+                    minikube kubectl -- delete deployment ollama-tester-backend
+                    minikube kubectl -- delete service ollama-tester-backend-service
+
+                    minikube kubectl -- delete deployment ollama-tester-frontend
+                    minikube kubectl -- delete service ollama-tester-frontend-service
+
+                    # 5. Cleanup images
+                    docker system prune -a -f
+                    minikube ssh -- "docker system prune -a -f"
+
+                    minikube kubectl -- get deployments
+                    minikube kubectl -- get services
+                    minikube kubectl -- get pods
+
+                    # 6. Build images and apply deployments from the folder
+                    minikube image build -t ollama-tester-backend:latest ./backend/.
+                    minikube kubectl -- apply -f ./backend/k8s/backend-deployment.yaml
+
+                    minikube image build -t ollama-tester-frontend:latest ./frontend/.
+                    minikube kubectl -- apply -f ./frontend/k8s/frontend-deployment.yaml
+
+                    # 7. Verify deployment is successful
+                    minikube kubectl -- get deployments
+                    minikube kubectl -- get services
+                    minikube kubectl -- get pods
