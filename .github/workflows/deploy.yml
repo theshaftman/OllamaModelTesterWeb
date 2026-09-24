@@ -66,6 +66,9 @@ jobs:
                     minikube kubectl -- apply -f ./frontend/k8s/frontend-deployment.yaml
 
                     # 7. Verify deployment is successful
+                    minikube kubectl -- rollout status deployment/ollama-tester-backend:latest --timeout=90s
+                    minikube kubectl -- rollout status deployment/ollama-tester-frontend:latest --timeout=90s
+
                     minikube kubectl -- get deployments
                     minikube kubectl -- get services
                     minikube kubectl -- get pods
