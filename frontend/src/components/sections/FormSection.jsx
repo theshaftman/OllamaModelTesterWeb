@@ -138,6 +138,7 @@ class FormSection extends Component {
                         <datalist id="models">
                             {models.map(m => <option key={m} value={m} />)}
                         </datalist>
+                        <a href='https://ollama.com/search' target='_blank'>Ollama Models</a>
                     </div>
 
                     <div className="mb-3">
