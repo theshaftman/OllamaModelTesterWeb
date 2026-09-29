@@ -27,7 +27,8 @@ class App extends Component {
             exportCsv: true,
             importGbq: false,
             exportGbq: false
-        }
+        },
+        nliModel: ''
     };
 
     componentDidMount() {
@@ -59,7 +60,7 @@ class App extends Component {
 
         try {
             const { originalText, modelName, humanText, humanLabel, fields,
-                dataOptions, projectId, datasetId  } = this.state;
+                dataOptions, projectId, datasetId, nliModel  } = this.state;
             const res = await api.post('/api/compare', {
                 original_text: originalText,
                 model_name: modelName,
@@ -68,9 +69,16 @@ class App extends Component {
                 selected_fields: fields,
                 data_options: dataOptions,
                 project_id: projectId,
-                dataset_id: datasetId
+                dataset_id: datasetId,
+                nli_model: nliModel
             });
-            this.setState({ results: res.data.compared_models });
+            this.setState({ 
+                results: {
+                    compared_models: res.data.compared_models,
+                    sentence_scores: res.data.sentence_scores,
+                    timestamp: res.data.timestamp
+                }
+            });
         } catch (err) {
             this.setState({ error: 'Something went wrong' });
         } finally {
@@ -159,7 +167,7 @@ class App extends Component {
     render() {
         const { originalText, modelName, humanText, humanLabel, results, 
             loading, models, fields, error, columns, 
-            projectId, datasetId, credentialsFile, dataOptions } = this.state;
+            projectId, datasetId, credentialsFile, dataOptions, nliModel } = this.state;
 
         return (
             <div>
@@ -184,6 +192,7 @@ class App extends Component {
                                 humanText={humanText}
                                 humanLabel={humanLabel}
                                 models={models}
+                                nliModel={nliModel}
                                 fields={fields}
                                 loading={loading}
                                 error={error}
@@ -195,7 +204,7 @@ class App extends Component {
                                 onDataOptionsChange={this.handleDataOptions}
                                 onSubmit={this.handleSubmit}
                             />
-                            {results && <ResultsSection />}
+                            {results && <ResultsSection results={results} />}
                         </div>
                     </div>
                 </div>

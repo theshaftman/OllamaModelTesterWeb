@@ -11,7 +11,8 @@ class FormSection extends Component {
     render() {
         const { originalText, modelName, humanText, humanLabel, models, fields, loading, error, columns, onChange, onFields, onFile, onSubmit, 
             projectId, 
-            datasetId, dataOptions
+            datasetId, dataOptions,
+            nliModel
         } = this.props;
 
         return (
@@ -125,7 +126,7 @@ class FormSection extends Component {
                     </div>
 
                     <div className="mb-3">
-                        <label>Select Model</label>
+                        <label>Select AI Model</label>
                         <input
                             type="text"
                             className="form-control"
@@ -139,6 +140,19 @@ class FormSection extends Component {
                             {models.map(m => <option key={m} value={m} />)}
                         </datalist>
                         <a href='https://ollama.com/search' target='_blank'>Ollama Models</a>
+                    </div>
+
+                    <div className='mb-3'>
+                        <label>Select NLI Model</label>
+                        <input 
+                            type="text"
+                            className='form-control'
+                            value={nliModel}
+                            onChange={(e) => onChange('nliModel', e.target.value)}
+                            placeholder='cross-encoder/nli-deberta-v3-base'
+                            autoComplete='nliModel'
+                        />
+                        <a href='https://huggingface.co/cross-encoder/models' target='_blank'>Cross Encoder NLI Models</a>
                     </div>
 
                     <div className="mb-3">

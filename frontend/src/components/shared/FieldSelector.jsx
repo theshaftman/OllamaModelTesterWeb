@@ -1,5 +1,9 @@
 import React, { Component } from 'react';
 
+const typeMap = { object: 'STRING', float64: 'FLOAT', int64: 'INTEGER' };
+const transform = (fields) => fields.map(f => ({ ...f, type: typeMap[f.type] || f.type || 'STRING' }));
+
+
 class FieldSelector extends Component {
     state = {
         selected: this.props.fields || []
@@ -16,11 +20,21 @@ class FieldSelector extends Component {
         });
     };
 
+    filterNumericFields = (fields) => {
+        return fields.filter((field) => {
+            return ['FLOAT', 'INTEGER'].includes(
+                String(field.type).toUpperCase()
+            )
+        });
+    };
+
     selectAll = () => {
         const { modelFields, validationFields } = this.props;
+        const model = this.filterNumericFields(transform(modelFields));
+        const validation = this.filterNumericFields(transform(validationFields));
         const all = [
-            ...validationFields.map(f => `validation.${f.key}`),
-            ...modelFields.map(f => `model_results.${f.key}`)
+            ...validation.map(f => `validation.${f.key}`),
+            ...model.map(f => `model_results.${f.key}`)
         ];
         this.setState({ selected: all });
         this.props.onFields(all);
@@ -35,7 +49,7 @@ class FieldSelector extends Component {
         return (
             <div className="col-6">
                 <h5>{title}</h5>
-                {fields.map(f => (
+                {this.filterNumericFields(fields).map(f => (
                     <div key={f.key} className="form-check">
                         <input
                             type="checkbox"
@@ -55,9 +69,6 @@ class FieldSelector extends Component {
     render() {
         const { modelFields, validationFields } = this.props;
         const { selected } = this.state;
-
-        const typeMap = { object: 'STRING', float64: 'FLOAT', int64: 'INTEGER' };
-        const transform = (fields) => fields.map(f => ({ ...f, type: typeMap[f.type] || f.type || 'STRING' }));
 
         const model = transform(modelFields);
         const validation = transform(validationFields);

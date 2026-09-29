@@ -94,9 +94,11 @@ class ComparisonRequest(BaseModel):
     data_options: Optional[Dict[str, bool]] = {}
     project_id: Optional[str] = ''
     dataset_id: Optional[str] = ''
+    nli_model: Optional[str] = ''
 
 class ComparisonResponse(BaseModel):
     compared_models: List[Dict[str, Any]] = []
+    sentence_scores: List[Dict[str, Any]] = []
     timestamp: str
 
 class FileService:
@@ -169,7 +171,9 @@ async def post_compare(request: ComparisonRequest):
         data_options = request.data_options
         project_id = request.project_id
         dataset_id = request.dataset_id
+        nli_model = request.nli_model
 
+        nli_model = nli_model if nli_model else 'cross-encoder/nli-deberta-v3-base'
         service = get_ollama()
 
         model_fields = []
@@ -193,19 +197,26 @@ async def post_compare(request: ComparisonRequest):
         if (data_options.get('importGbq', True)):
             service.import_results_from_gbq(project_id=project_id, dataset_id=dataset_id)
 
+        sentence_scores = []
         if (original_text and human_text and human_label):
-            service.validate_evaluator(
+            validator_evaluator, ve_sentence_scores = service.validate_evaluator(
                 prompt_text=original_text,
                 generated_text=human_text,
-                human_label=human_label
+                human_label=human_label,
+                nli_model_name=nli_model
             )
+            sentence_scores.extend(ve_sentence_scores)
 
         # Models
         compared_models = []
         if (original_text and len(model.strip()) > 0):
             var_models = f'{model}'.replace(' ', '').split(',')
             service.pull_models(var_models)
-            compared_models = service.compare_models(prompt_text=original_text)
+            compared_models, cm_sentence_scores = service.compare_models(
+                prompt_text=original_text,
+                nli_model_name=nli_model
+            )
+            sentence_scores.extend(cm_sentence_scores)
 
         # Create visualizations
         service.visualize_results(plot_type='bar', metrics=metrics, savefig_path=f'charts/bar_chart.png', max_cols_per_row=2)
@@ -221,6 +232,7 @@ async def post_compare(request: ComparisonRequest):
 
         return ComparisonResponse(
             compared_models = compared_models,
+            sentence_scores = sentence_scores,
             timestamp=timestamp
         )
     except Exception as e:
