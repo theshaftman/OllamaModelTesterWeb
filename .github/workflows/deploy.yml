@@ -37,7 +37,7 @@ jobs:
                     # 3. Pull latest changes from main branch
                     git fetch origin main
                     git reset --hard origin/main
-                    git clean -fd
+                    git clean -fd 
 
                     # 4. Delete backend and frontend clusters
                     minikube kubectl -- delete deployment ollama-tester-backend
