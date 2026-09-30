@@ -61,9 +61,6 @@ jobs:
                     minikube image build -t ollama-tester-frontend:latest ./frontend/.
                     minikube kubectl -- apply -f ./frontend/k8s/frontend-deployment.yaml
 
-                    minikube kubectl -- rollout restart deployment/ollama-tester-backend
-                    minikube kubectl -- rollout restart deployment/ollama-tester-frontend
-
                     # 7. Verify deployment is successful
                     minikube kubectl -- rollout status deployment/ollama-tester-backend --timeout=300s
                     minikube kubectl -- rollout status deployment/ollama-tester-frontend --timeout=180s
