@@ -29,10 +29,10 @@ spec:
           value: "true" 
         resources:
           requests:
-            memory: "1Gi"
+            memory: "512Mi"
             cpu: "500m"
           limits:
-            memory: "2500Mi"
+            memory: "1500Mi"
             cpu: "2"
 ---
 apiVersion: v1
