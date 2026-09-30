@@ -20,13 +20,14 @@ jobs:
                 username: ${{ secrets.VM_USER }}
                 key: ${{ secrets.VM_SSH_KEY }}
                 script: |
+                    set -euo pipefail
+
                     # 1. Check if Minikube is running
                     if ! minikube status >/dev/null 2>&1; then
-                        minikube start --cpus=2 --memory=6144 --driver=docker --container-runtime=docker
+                        minikube start --cpus=4 --memory=7168 --driver=docker --container-runtime=docker
                     fi
 
-                    minikube kubectl -- wait --for=condition=Ready nodes --all --timeout=120s
-
+                    minikube kubectl -- wait --for=condition=Ready nodes --all --timeout=300s
                     echo "Minikube OK"
                     minikube status
 
@@ -34,9 +35,11 @@ jobs:
                     cd /home/ubuntu/.projects/OllamaModelTesterWeb/
 
                     # 3. Pull latest changes from main branch
-                    git pull origin main
+                    git fetch origin main
+                    git reset --hard origin/main
+                    git clean -fd
 
-                    # 4. Delete backaned and frontend clusters
+                    # 4. Delete backend and frontend clusters
                     minikube kubectl -- delete deployment ollama-tester-backend
                     minikube kubectl -- delete service ollama-tester-backend-service
 
@@ -58,9 +61,12 @@ jobs:
                     minikube image build -t ollama-tester-frontend:latest ./frontend/.
                     minikube kubectl -- apply -f ./frontend/k8s/frontend-deployment.yaml
 
+                    minikube kubectl -- rollout restart deployment/ollama-tester-backend
+                    minikube kubectl -- rollout restart deployment/ollama-tester-frontend
+
                     # 7. Verify deployment is successful
-                    minikube kubectl -- rollout status deployment/ollama-tester-backend --timeout=90s
-                    minikube kubectl -- rollout status deployment/ollama-tester-frontend --timeout=90s
+                    minikube kubectl -- rollout status deployment/ollama-tester-backend --timeout=300s
+                    minikube kubectl -- rollout status deployment/ollama-tester-frontend --timeout=180s
 
                     minikube kubectl -- get deployments
                     minikube kubectl -- get services
