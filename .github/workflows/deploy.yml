@@ -22,7 +22,7 @@ jobs:
                 script: |
                     # 1. Check if Minikube is running
                     if ! minikube status | grep -q "host: Running"; then
-                        if ! minikube start --cpus=2 --memory=4096 --driver=docker --container-runtime=docker; then
+                        if ! minikube start --cpus=2 --memory=6144 --driver=docker --container-runtime=docker; then
                             echo "Minikube start failed"
                             exit 1
                         fi
