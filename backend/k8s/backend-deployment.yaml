@@ -26,13 +26,21 @@ spec:
         - name: OLLAMA_PORT
           value: "11434"
         - name: START_OLLAMA
-          value: "true" 
+          value: "true"
+        - name: OLLAMA_MAX_LOADED_MODELS
+          value: "1"
+        - name: OLLAMA_KEEP_ALIVE
+          value: "0"
+        - name: OLLAMA_NUM_PARALLEL
+          value: "1"
+        - name: OLLAMA_CONTEXT_LENGTH
+          value: "512"
         resources:
           requests:
-            memory: "1Gi"
+            memory: "2Gi"
             cpu: "500m"
           limits:
-            memory: "2500Mi"
+            memory: "4Gi"
             cpu: "2"
 ---
 apiVersion: v1
