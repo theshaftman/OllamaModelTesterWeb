@@ -20,8 +20,6 @@ jobs:
                 username: ${{ secrets.VM_USER }}
                 key: ${{ secrets.VM_SSH_KEY }}
                 script: |
-                    set -euo pipefail
-
                     # 1. Check if Minikube is running
                     if ! minikube status >/dev/null 2>&1; then
                         minikube start --cpus=4 --memory=7168 --driver=docker --container-runtime=docker
@@ -35,9 +33,7 @@ jobs:
                     cd /home/ubuntu/.projects/OllamaModelTesterWeb/
 
                     # 3. Pull latest changes from main branch
-                    git fetch origin main
-                    git reset --hard origin/main
-                    git clean -fd 
+                    git pull origin main
 
                     # 4. Delete backend and frontend clusters
                     minikube kubectl -- delete deployment ollama-tester-backend
