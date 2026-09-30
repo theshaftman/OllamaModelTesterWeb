@@ -34,9 +34,7 @@ jobs:
                     cd /home/ubuntu/.projects/OllamaModelTesterWeb/
 
                     # 3. Pull latest changes from main branch
-                    git fetch origin main
-                    git reset --hard origin/main
-                    git clean -fd
+                    git pull origin main
 
                     # 4. Delete backaned and frontend clusters
                     minikube kubectl -- delete deployment ollama-tester-backend
@@ -46,8 +44,7 @@ jobs:
                     minikube kubectl -- delete service ollama-tester-frontend-service
 
                     # 5. Cleanup images
-                    docker image prune -a -f
-                    docker builder prune -f
+                    docker system prune -a -f
                     minikube ssh -- "docker system prune -a -f"
 
                     minikube kubectl -- get deployments
